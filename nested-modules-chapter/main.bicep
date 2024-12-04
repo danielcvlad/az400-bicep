@@ -1,5 +1,5 @@
 @description('The Azure region into which the resources should be deployed.')
-param location string = 'westus3'
+param location string = 'westeurope'
 
 @description('The name of the App Service app.')
 param appServiceAppName string = 'toy-${uniqueString(resourceGroup().id)}'
