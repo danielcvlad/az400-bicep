@@ -1,5 +1,8 @@
 param cosmosDBAccountName string = 'toyrnd-${uniqueString(resourceGroup().id)}'
 param location string = resourceGroup().location
+param cosmosDBDatabaseThroughput int = 400
+
+var cosmosDBDatabaseName = 'FlightTests'
 
 //create cosmos db account
 resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
@@ -15,3 +18,16 @@ resource cosmosDBAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   }
 }
 
+//cosmos db database
+resource cosmosDBDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' = {
+  parent: cosmosDBAccount
+  name: cosmosDBDatabaseName
+  properties: {
+    resource: {
+      id: cosmosDBDatabaseName
+    }
+    options: {
+      throughput: cosmosDBDatabaseThroughput
+    }
+  }
+}
