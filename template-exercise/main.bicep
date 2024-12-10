@@ -102,7 +102,7 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   sku: environmentConfigurationMap[environmentType].sqlDatabase.sku
 }
 
-resource sqlserverName_AllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
+resource sqlFirewallRuleAllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
   parent: sqlServer
   name: 'AllowAllAzureIPs'
   properties: {
@@ -111,86 +111,9 @@ resource sqlserverName_AllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@202
   }
 }
 
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: storageAccountName
-  location: 'eastus'
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    accessTier: 'Hot'
-  }
-
-  resource blobServices 'blobServices' existing = {
-    name: 'default'
-  }
-}
-
-resource container1 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: storageAccount::blobServices
-  name: container1Name
-}
-
-resource productmanuals 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  name: '${storageAccount.name}/default/${productmanualsName}'
-}
-resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: hostingPlanName
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: appServicePlanName
   location: location
-  sku: {
-    name: skuName
-    capacity: skuCapacity
-  }
-}
-
-resource webSite 'Microsoft.Web/sites@2023-12-01' = {
-  name: webSiteName
-  location: location
-  properties: {
-    serverFarmId: hostingPlan.id
-    siteConfig: {
-      appSettings: [
-        {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: AppInsights_webSiteName.properties.InstrumentationKey
-        }
-        {
-          name: 'StorageAccountConnectionString'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
-        }
-      ]
-    }
-  }
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${msi.id}': {}
-    }
-  }
-}
-
-resource msi 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' = {
-  name: managedIdentityName
-  location: location
-}
-
-resource roleassignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(roleDefinitionId, resourceGroup().id)
-
-  properties: {
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
-    principalId: msi.properties.principalId
-  }
-}
-
-resource AppInsights_webSiteName 'Microsoft.Insights/components@2020-02-02' = {
-  name: 'AppInsights'
-  location: location
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-  }
+  sku: environmentConfigurationMap[environmentType].appServicePlan.sku
+  tags: tags
 }
