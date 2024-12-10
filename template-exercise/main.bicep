@@ -117,3 +117,78 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   sku: environmentConfigurationMap[environmentType].appServicePlan.sku
   tags: tags
 }
+
+resource appServiceApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: appServiceAppName
+  location: location
+  tags: tags
+  properties: {
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      appSettings: [
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: applicationInsights.properties.InstrumentationKey
+        }
+        {
+          name: 'StorageAccountConnectionString'
+          value: storageAccountConnectionString
+        }
+      ]
+    }
+  }
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {} // This format is required when working with user-assigned managed identities.
+    }
+  }
+}
+
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  sku: environmentConfigurationMap[environmentType].storageAccount.sku
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+  }
+
+  resource blobServices 'blobServices' existing = {
+    name: 'default'
+
+    resource containers 'containers' = [for blobContainerName in blobContainerNames: {
+      name: blobContainerName
+    }]
+  }
+}
+
+@description('A user-assigned managed identity that is used by the App Service app to communicate with a storage account.')
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview'= {
+  name: managedIdentityName
+  location: location
+  tags: tags
+}
+
+@description('Grant the \'Contributor\' role to the user-assigned managed identity, at the scope of the resource group.')
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(contributorRoleDefinitionId, resourceGroup().id) // Create a GUID based on the role definition ID and scope (resource group ID). This will return the same GUID every time the template is deployed to the same resource group.
+  properties: {
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleDefinitionId)
+    principalId: managedIdentity.properties.principalId
+    description: 'Grant the "Contributor" role to the user-assigned managed identity so it can access the storage account.'
+  }
+}
+
+
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: applicationInsightsName
+  location: location
+  kind: 'web'
+  tags: tags
+  properties: {
+    Application_Type: 'web'
+  }
+}
