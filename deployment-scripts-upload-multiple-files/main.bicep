@@ -1,9 +1,17 @@
+/*
+https://learn.microsoft.com/en-us/training/modules/extend-resource-manager-template-deployment-scripts/5-exercise-parameterize-deployment-script?pivots=biceppowershell
+Deploying multiple files to storage account
+*/
+
 var storageAccountName = 'storage${uniqueString(resourceGroup().id)}'
 var storageBlobContainerName = 'config'
 var userAssignedIdentityName = 'configDeployer'
 var roleAssignmentName = guid(resourceGroup().id, 'contributor')
 var contributorRoleDefinitionId = resourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
 var deploymentScriptName = 'CopyConfigScript'
+
+@description('List of files to copy to application storage account.')
+param filesToCopy array
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
@@ -67,6 +75,20 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     }
   }
   properties: {
+    arguments: '-File \'${string(filesToCopy)}\''
+    environmentVariables: [{
+      name: 'ResourceGroupName'
+      value: resourceGroup().name
+    }
+    {
+      name: 'StorageAccountName'
+      value: storageAccountName
+    }
+    {
+      name: 'StorageContainerName'
+      value: storageBlobContainerName
+    }
+    ]
     azPowerShellVersion: '3.0'
     scriptContent: '''
 param([string]$File)
@@ -93,4 +115,5 @@ Write-Host "Finished copying $count files."
   ]
 }
 
-output fileUri string = deploymentScript.properties.outputs.Uri
+output fileUri object = deploymentScript.properties.outputs
+output storageAccountName string = storageAccountName
