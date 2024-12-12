@@ -1,5 +1,8 @@
 var storageAccountName = 'storage${uniqueString(resourceGroup().id)}'
 var storageBlobContainerName = 'config'
+var userAssignedIdentityName = 'configDeployer'
+var roleAssignmentName = guid(resourceGroup().id, 'contributor')
+var contributorRoleDefinitionId = resourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
@@ -35,5 +38,21 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
   name: storageBlobContainerName
   properties: {
     publicAccess: 'Blob'
+  }
+}
+
+//create managed identity
+resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+  name: userAssignedIdentityName
+  location: resourceGroup().location
+}
+
+//set the contributor role for the managed identity
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: roleAssignmentName
+  properties: {
+    roleDefinitionId: contributorRoleDefinitionId
+    principalId: userAssignedIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
   }
 }
