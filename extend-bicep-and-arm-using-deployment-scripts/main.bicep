@@ -3,6 +3,7 @@ var storageBlobContainerName = 'config'
 var userAssignedIdentityName = 'configDeployer'
 var roleAssignmentName = guid(resourceGroup().id, 'contributor')
 var contributorRoleDefinitionId = resourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
+var deploymentScriptName = 'CopyConfigScript'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
@@ -54,5 +55,33 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
     roleDefinitionId: contributorRoleDefinitionId
     principalId: userAssignedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: deploymentScriptName
+  location: resourceGroup().location
+  kind: 'AzurePowerShell'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${userAssignedIdentity.id}': {}
+    }
+  }
+  dependsOn: [
+    roleAssignment
+    blobContainer
+  ]
+  properties: {
+    azPowerShellVersion: '3.0'
+    scriptContent: '''
+      Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/Azure/azure-docs-json-samples/master/mslearn-arm-deploymentscripts-sample/appsettings.json' -OutFile 'appsettings.json'
+      $storageAccount = Get-AzStorageAccount -ResourceGroupName 'learndeploymentscript_exercise_1' | Where-Object { $_.StorageAccountName -like 'storage*' }
+      $blob = Set-AzStorageBlobContent -File 'appsettings.json' -Container 'config' -Blob 'appsettings.json' -Context $storageAccount.Context
+      $DeploymentScriptOutputs = @{}
+      $DeploymentScriptOutputs['Uri'] = $blob.ICloudBlob.Uri
+      $DeploymentScriptOutputs['StorageUri'] = $blob.ICloudBlob.StorageUri
+    '''
+    retentionInterval: 'P1D'
   }
 }
