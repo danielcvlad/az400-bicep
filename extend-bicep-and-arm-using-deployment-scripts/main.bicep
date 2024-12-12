@@ -85,3 +85,5 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     retentionInterval: 'P1D'
   }
 }
+
+output fileUri string = deploymentScript.properties.outputs.Uri
