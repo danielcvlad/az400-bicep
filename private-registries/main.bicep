@@ -9,7 +9,7 @@ param appServicePlanSkuName string = 'F1'
 
 var appServicePlanName = 'toy-dog-plan'
 
-module website 'br:dvl69420.azurecr.io/website:v1' = {
+module website 'br/ToyCompanyRegistry:website:v1' = {
   name: 'toy-dog-website'
   params: {
     appServiceAppName: appServiceAppName
@@ -19,7 +19,7 @@ module website 'br:dvl69420.azurecr.io/website:v1' = {
   }
 }
 
-module cdn 'br:dvl69420.azurecr.io/cdn:v1' = {
+module cdn 'br/ToyCompanyRegistry:cdn:v1' = {
   name: 'toy-dog-cdn'
   params: {
     httpsOnly: true
